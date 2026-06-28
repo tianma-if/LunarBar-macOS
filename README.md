@@ -53,6 +53,11 @@ Views/
 Services/
   HolidayService.swift
   WeatherService.swift
+workers/
+  weather/
+    src/
+      index.ts
+    wrangler.jsonc
 Resources/
   Info.plist
   holidays.json
@@ -103,6 +108,22 @@ xattr -dr com.apple.quarantine /path/to/LunarBar.app
 ## 当前状态
 
 当前版本可以在菜单栏显示日历图标，并弹出带农历、传统节日、二十四节气、法定节假日、调休补班角标和实时天气的基础月历面板。天气服务需要用户自行配置 API Key。
+
+## 天气后端
+
+仓库包含一个 Cloudflare Worker 天气代理，位于 `workers/weather`。它提供统一天气接口，并通过 KV 缓存天气数据，避免客户端直接持有天气服务商密钥。
+
+当前已支持：
+
+- QWeather JWT 认证
+- Open-Meteo 免 Key fallback
+- Cloudflare KV 缓存
+
+示例：
+
+```text
+https://lunarbar-weather.yingwaizhiying8671.workers.dev/weather?lat=39.9042&lon=116.4074&cityName=北京
+```
 
 ## 许可证
 

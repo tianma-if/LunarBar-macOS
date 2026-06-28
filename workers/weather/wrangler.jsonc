@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lunarbar-weather",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "QWEATHER_API_HOST": "https://devapi.qweather.com",
+    "CACHE_TTL_SECONDS": "1800",
+    "STALE_TTL_SECONDS": "21600"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "WEATHER_CACHE",
+      "id": "b20950103b1a4664a50b550398417029"
+    }
+  ]
+}
