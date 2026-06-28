@@ -14,15 +14,19 @@ final class CalendarViewModel: ObservableObject {
     let weekdaySymbols = ["一", "二", "三", "四", "五", "六", "日"]
 
     private var calendar: Calendar
+    private var holidays: [Date: HolidayInfo] = [:]
+    private let holidayService: HolidayService
     private let lunarFormatter: LunarCalendarFormatter
     private let titleFormatter: DateFormatter
 
     init(
         selectedMonth: Date = Date(),
-        calendar: Calendar = CalendarViewModel.makeGregorianCalendar()
+        calendar: Calendar = CalendarViewModel.makeGregorianCalendar(),
+        holidayService: HolidayService = HolidayService()
     ) {
         self.selectedMonth = selectedMonth
         self.calendar = calendar
+        self.holidayService = holidayService
 
         let formatter = DateFormatter()
         formatter.calendar = calendar
@@ -32,6 +36,7 @@ final class CalendarViewModel: ObservableObject {
         self.lunarFormatter = LunarCalendarFormatter(timeZone: calendar.timeZone)
 
         rebuildMonth()
+        loadHolidays()
     }
 
     func goToPreviousMonth() {
@@ -78,6 +83,8 @@ final class CalendarViewModel: ObservableObject {
 
             let dayNumber = calendar.component(.day, from: date)
             let monthPosition = monthPosition(for: date, relativeTo: monthStart)
+            let holiday = holidays[calendar.startOfDay(for: date)]
+            let officialFestivalName = holiday?.kind == .rest ? holiday?.name : nil
 
             return DayInfo(
                 id: calendar.startOfDay(for: date),
@@ -86,10 +93,18 @@ final class CalendarViewModel: ObservableObject {
                 monthPosition: monthPosition,
                 isToday: calendar.isDateInToday(date),
                 lunarText: lunarFormatter.lunarText(for: date),
-                festivalName: lunarFormatter.festivalName(for: date),
+                festivalName: officialFestivalName ?? lunarFormatter.festivalName(for: date),
                 solarTerm: lunarFormatter.solarTerm(for: date),
-                holidayBadge: nil
+                holidayBadge: holiday?.badge
             )
+        }
+    }
+
+    private func loadHolidays() {
+        Task {
+            let loadedHolidays = await holidayService.loadHolidays()
+            holidays = loadedHolidays
+            rebuildMonth()
         }
     }
 
