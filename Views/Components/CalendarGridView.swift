@@ -85,7 +85,7 @@ private struct DayCellView: View {
 
                 Text(day.secondaryText)
                     .font(.system(size: 9, weight: .regular))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryTextColor)
                     .lineLimit(1)
                     .frame(height: 12)
             }
@@ -114,6 +114,22 @@ private struct DayCellView: View {
         }
 
         return day.monthPosition == .current ? .primary : .secondary
+    }
+
+    private var secondaryTextColor: Color {
+        if day.isToday {
+            return .white.opacity(0.9)
+        }
+
+        if day.festivalName != nil {
+            return .red
+        }
+
+        if day.solarTerm != nil {
+            return .accentColor
+        }
+
+        return .secondary
     }
 
     @ViewBuilder
