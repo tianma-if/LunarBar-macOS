@@ -81,7 +81,10 @@ async function handleWeather(url: URL, env: Env, ctx: ExecutionContext): Promise
       return weatherResponse({ ...cached.payload, cached: true, stale: true });
     }
 
-    return json({ error: "Weather unavailable" }, 502);
+    return json({
+      error: "Weather unavailable",
+      reason: error instanceof Error ? error.message : "Unknown error"
+    }, 502);
   }
 }
 
@@ -120,9 +123,9 @@ async function fetchFreshWeather(query: WeatherQuery, env: Env): Promise<Omit<We
   if (env.QWEATHER_CREDENTIAL_ID && env.QWEATHER_PROJECT_ID && env.QWEATHER_PRIVATE_KEY) {
     try {
       return await fetchQWeather(query, env);
-    } catch {
+  } catch (error) {
       if (query.kind === "location") {
-        throw new Error("QWeather failed");
+        throw error;
       }
     }
   }
