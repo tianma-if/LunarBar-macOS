@@ -14,6 +14,8 @@ The Worker prefers QWeather when credentials are configured. Coordinate queries 
 
 ## Secrets
 
+See `env.example` for all external variables and their meanings.
+
 ```bash
 wrangler secret put QWEATHER_CREDENTIAL_ID
 wrangler secret put QWEATHER_PROJECT_ID
