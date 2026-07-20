@@ -147,11 +147,26 @@ jobs:
           echo "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > "$API_KEY_PATH"
           chmod 600 "$API_KEY_PATH"
 
-          xcrun notarytool submit "$DMG_NAME" \
+          NOTARY_RESULT="$(xcrun notarytool submit "$DMG_NAME" \
             --key "$API_KEY_PATH" \
             --key-id "$APP_STORE_CONNECT_API_KEY_ID" \
             --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --wait
+            --wait \
+            --output-format json)"
+          echo "$NOTARY_RESULT"
+
+          NOTARY_SUBMISSION_ID="$(plutil -extract id raw - <<< "$NOTARY_RESULT")"
+          NOTARY_STATUS="$(plutil -extract status raw - <<< "$NOTARY_RESULT")"
+          if [[ "$NOTARY_STATUS" != "Accepted" ]]; then
+            xcrun notarytool log "$NOTARY_SUBMISSION_ID" \
+              --key "$API_KEY_PATH" \
+              --key-id "$APP_STORE_CONNECT_API_KEY_ID" \
+              --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
+              "$RUNNER_TEMP/notary-log.json" || true
+            cat "$RUNNER_TEMP/notary-log.json" || true
+            exit 1
+          fi
+
           xcrun stapler staple "$DMG_NAME"
           xcrun stapler validate "$DMG_NAME"
           spctl \
