@@ -87,6 +87,8 @@ jobs:
               "CODE_SIGN_STYLE=Manual"
               "DEVELOPMENT_TEAM=${DEVELOPMENT_TEAM}"
               "CODE_SIGN_IDENTITY=${DEVELOPER_ID_APPLICATION}"
+              "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
+              "OTHER_CODE_SIGN_FLAGS=--timestamp"
             )
           fi
 
@@ -105,6 +107,17 @@ jobs:
           APP_PATH="build/DerivedData/Build/Products/${BUILD_CONFIGURATION}/LunarBar.app"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           codesign --display --verbose=4 "$APP_PATH"
+
+          SIGNING_INFO="$(codesign --display --verbose=4 "$APP_PATH" 2>&1)"
+          echo "$SIGNING_INFO"
+          grep -q '^Timestamp=' <<< "$SIGNING_INFO"
+
+          ENTITLEMENTS="$(codesign --display --entitlements :- "$APP_PATH" 2>/dev/null || true)"
+          echo "$ENTITLEMENTS"
+          if grep -q 'com.apple.security.get-task-allow' <<< "$ENTITLEMENTS"; then
+            echo "Release signature contains the forbidden get-task-allow entitlement."
+            exit 1
+          fi
 
       - name: Package app
         run: |
