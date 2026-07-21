@@ -15,6 +15,7 @@ permissions:
 jobs:
   build:
     name: Build LunarBar
+    # Keep release runs easy to identify when comparing notarization times.
     runs-on: macos-latest
     env:
       DEVELOPMENT_TEAM: 9KA3NM38B6
