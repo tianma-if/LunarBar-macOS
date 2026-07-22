@@ -29,7 +29,24 @@ struct WeatherSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            VStack(alignment: .leading, spacing: 6) {
+                Text("位置")
+                    .font(.subheadline.weight(.medium))
+
+                Text("启动时自动获取当前位置，用于查询当地天气。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button("重新获取当前位置") {
+                    viewModel.requestCurrentLocation()
+                }
+                .buttonStyle(.bordered)
+            }
+
             VStack(alignment: .leading, spacing: 10) {
+                Text("无法获取位置时使用以下城市")
+                    .font(.subheadline.weight(.medium))
+
                 LabeledContent("城市编码") {
                     TextField("101010100", text: $cityCode)
                         .textFieldStyle(.roundedBorder)

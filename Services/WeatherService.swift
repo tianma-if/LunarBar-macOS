@@ -25,8 +25,31 @@ struct WeatherSettings: Equatable {
     let cityCode: String
     let cityName: String
 
+    let latitude: Double?
+    let longitude: Double?
+
+    init(
+        provider: WeatherProvider,
+        apiKey: String,
+        cityCode: String,
+        cityName: String,
+        latitude: Double? = nil,
+        longitude: Double? = nil
+    ) {
+        self.provider = provider
+        self.apiKey = apiKey
+        self.cityCode = cityCode
+        self.cityName = cityName
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
     var isReady: Bool {
-        !cityCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        hasCoordinates || !cityCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var hasCoordinates: Bool {
+        latitude != nil && longitude != nil
     }
 }
 
@@ -87,10 +110,18 @@ private struct WorkerWeatherService: WeatherServicing {
 
     func fetchWeather(settings: WeatherSettings) async throws -> WeatherInfo {
         var components = URLComponents(string: "https://lunarbar-weather.yingwaizhiying8671.workers.dev/weather")
-        components?.queryItems = [
-            URLQueryItem(name: "location", value: settings.cityCode),
-            URLQueryItem(name: "cityName", value: settings.cityName)
-        ]
+        if let latitude = settings.latitude, let longitude = settings.longitude {
+            components?.queryItems = [
+                URLQueryItem(name: "lat", value: String(format: "%.4f", latitude)),
+                URLQueryItem(name: "lon", value: String(format: "%.4f", longitude)),
+                URLQueryItem(name: "cityName", value: settings.cityName)
+            ]
+        } else {
+            components?.queryItems = [
+                URLQueryItem(name: "location", value: settings.cityCode),
+                URLQueryItem(name: "cityName", value: settings.cityName)
+            ]
+        }
 
         guard let url = components?.url else {
             throw WeatherServiceError.badURL
