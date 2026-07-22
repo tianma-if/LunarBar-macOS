@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 struct MainPopupView: View {
     @ObservedObject var viewModel: CalendarViewModel
@@ -13,19 +12,6 @@ struct MainPopupView: View {
             }
 
             CalendarGridView(viewModel: viewModel)
-
-            Divider()
-
-            HStack {
-                Spacer()
-
-                Button(role: .destructive) {
-                    NSApplication.shared.terminate(nil)
-                } label: {
-                    Label("退出 LunarBar", systemImage: "power")
-                }
-                .buttonStyle(.borderless)
-            }
         }
         .padding(18)
         .sheet(isPresented: $showingWeatherSettings) {

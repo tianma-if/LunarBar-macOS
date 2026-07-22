@@ -20,6 +20,7 @@
 		100000000000000000000112 /* WeatherHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000013 /* WeatherHeaderView.swift */; };
 		100000000000000000000113 /* WeatherSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000014 /* WeatherSettingsView.swift */; };
 		100000000000000000000114 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000015 /* Assets.xcassets */; };
+		100000000000000000000115 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000016 /* UpdateChecker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		100000000000000000000013 /* WeatherHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherHeaderView.swift; sourceTree = "<group>"; };
 		100000000000000000000014 /* WeatherSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSettingsView.swift; sourceTree = "<group>"; };
 		100000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		100000000000000000000016 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +134,7 @@
 			children = (
 				100000000000000000000008 /* HolidayService.swift */,
 				100000000000000000000011 /* WeatherService.swift */,
+				100000000000000000000016 /* UpdateChecker.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -218,6 +221,7 @@
 				100000000000000000000111 /* WeatherViewModel.swift in Sources */,
 				100000000000000000000112 /* WeatherHeaderView.swift in Sources */,
 				100000000000000000000113 /* WeatherSettingsView.swift in Sources */,
+				100000000000000000000115 /* UpdateChecker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
