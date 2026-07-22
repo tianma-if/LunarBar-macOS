@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreLocation
+import AppKit
 
 @MainActor
 final class WeatherViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
@@ -8,6 +9,7 @@ final class WeatherViewModel: NSObject, ObservableObject, CLLocationManagerDeleg
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var settings: WeatherSettings
+    @Published private(set) var locationMessage = "正在请求定位权限…"
 
     private let service: WeatherServicing
     private let defaults: UserDefaults
@@ -70,20 +72,26 @@ final class WeatherViewModel: NSObject, ObservableObject, CLLocationManagerDeleg
 
         switch locationManager.authorizationStatus {
         case .authorized, .authorizedAlways:
+            locationMessage = "正在获取当前位置…"
             startLocationUpdates()
         case .notDetermined:
+            locationMessage = "请在系统提示中允许定位权限"
             locationManager.requestWhenInUseAuthorization()
         case .denied, .restricted:
-            break
+            locationMessage = "定位权限已关闭，请在系统设置中开启"
+            openLocationSettings()
         @unknown default:
+            locationMessage = "无法获取定位权限"
             break
         }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        guard [.authorized, .authorizedAlways].contains(manager.authorizationStatus),
-              !hasRequestedLocation else { return }
-        startLocationUpdates()
+        handleAuthorizationChange(manager.authorizationStatus)
+    }
+
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        handleAuthorizationChange(status)
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -102,17 +110,41 @@ final class WeatherViewModel: NSObject, ObservableObject, CLLocationManagerDeleg
                 latitude: location.coordinate.latitude,
                 longitude: location.coordinate.longitude
             )
+            self.locationMessage = "已获取当前位置：\(cityName)"
             self.refresh()
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         manager.stopUpdatingLocation()
+        locationMessage = "暂时无法获取当前位置，将使用备用城市"
     }
 
     private func startLocationUpdates() {
         guard !hasRequestedLocation else { return }
         locationManager.requestLocation()
+    }
+
+    private func handleAuthorizationChange(_ status: CLAuthorizationStatus) {
+        switch status {
+        case .authorized, .authorizedAlways:
+            guard !hasRequestedLocation else { return }
+            locationMessage = "正在获取当前位置…"
+            startLocationUpdates()
+        case .denied, .restricted:
+            locationMessage = "定位权限已关闭，请在系统设置中开启"
+        case .notDetermined:
+            locationMessage = "请在系统提示中允许定位权限"
+        @unknown default:
+            locationMessage = "无法获取定位权限"
+        }
+    }
+
+    private func openLocationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     private func cityName(for location: CLLocation) async -> String? {

@@ -2,27 +2,29 @@ import SwiftUI
 
 struct MainPopupView: View {
     @ObservedObject var viewModel: CalendarViewModel
-    @StateObject private var weatherViewModel = WeatherViewModel()
-    @State private var showingWeatherSettings = false
+    @ObservedObject var weatherViewModel: WeatherViewModel
+    @Environment(\.openWindow) private var openWindow
+
+    init(viewModel: CalendarViewModel, weatherViewModel: WeatherViewModel) {
+        self.viewModel = viewModel
+        self.weatherViewModel = weatherViewModel
+    }
 
     var body: some View {
         VStack(spacing: 16) {
             WeatherHeaderView(viewModel: weatherViewModel) {
-                showingWeatherSettings = true
+                openWindow(id: "settings")
             }
 
             CalendarGridView(viewModel: viewModel)
         }
         .padding(18)
-        .sheet(isPresented: $showingWeatherSettings) {
-            WeatherSettingsView(viewModel: weatherViewModel)
-        }
     }
 }
 
 struct MainPopupView_Previews: PreviewProvider {
     static var previews: some View {
-        MainPopupView(viewModel: CalendarViewModel())
+        MainPopupView(viewModel: CalendarViewModel(), weatherViewModel: WeatherViewModel())
             .frame(width: 360, height: 520)
     }
 }

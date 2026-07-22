@@ -39,11 +39,11 @@ struct WeatherSettingsView: View {
                 Text("位置")
                     .font(.subheadline.weight(.medium))
 
-                Text("启动时自动获取当前位置，用于查询当地天气。")
+                Text(viewModel.locationMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                Button("重新获取当前位置") {
+                Button(viewModel.locationMessage.contains("关闭") ? "打开定位设置" : "重新获取当前位置") {
                     viewModel.requestCurrentLocation()
                 }
                 .buttonStyle(.bordered)
