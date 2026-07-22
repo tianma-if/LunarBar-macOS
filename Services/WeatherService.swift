@@ -1,6 +1,7 @@
 import Foundation
 
 enum WeatherProvider: String, CaseIterable, Identifiable {
+    case lunarBar
     case amap
     case qweather
 
@@ -8,6 +9,8 @@ enum WeatherProvider: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
+        case .lunarBar:
+            return "LunarBar Weather"
         case .amap:
             return "高德天气"
         case .qweather:
@@ -23,7 +26,6 @@ struct WeatherSettings: Equatable {
     let cityName: String
 
     var isReady: Bool {
-        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !cityCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
@@ -53,6 +55,7 @@ enum WeatherServiceError: LocalizedError {
 }
 
 struct WeatherService: WeatherServicing {
+    private let workerService = WorkerWeatherService()
     private let amapService = AMapWeatherService()
     private let qweatherService = QWeatherService()
 
@@ -62,11 +65,46 @@ struct WeatherService: WeatherServicing {
         }
 
         switch settings.provider {
+        case .lunarBar:
+            return try await workerService.fetchWeather(settings: settings)
         case .amap:
             return try await amapService.fetchWeather(settings: settings)
         case .qweather:
             return try await qweatherService.fetchWeather(settings: settings)
         }
+    }
+}
+
+private struct WorkerWeatherService: WeatherServicing {
+    private struct Response: Decodable {
+        let cityName: String
+        let condition: String
+        let temperature: String
+        let symbolName: String
+        let reportTime: String
+        let providerName: String
+    }
+
+    func fetchWeather(settings: WeatherSettings) async throws -> WeatherInfo {
+        var components = URLComponents(string: "https://lunarbar-weather.yingwaizhiying8671.workers.dev/weather")
+        components?.queryItems = [
+            URLQueryItem(name: "location", value: settings.cityCode),
+            URLQueryItem(name: "cityName", value: settings.cityName)
+        ]
+
+        guard let url = components?.url else {
+            throw WeatherServiceError.badURL
+        }
+
+        let response: Response = try await fetchJSON(from: url)
+        return WeatherInfo(
+            cityName: response.cityName,
+            condition: response.condition,
+            temperature: response.temperature,
+            symbolName: response.symbolName,
+            reportTime: response.reportTime,
+            providerName: response.providerName
+        )
     }
 }
 

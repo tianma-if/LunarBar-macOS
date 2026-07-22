@@ -4,9 +4,7 @@ struct WeatherSettingsView: View {
     @ObservedObject var viewModel: WeatherViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @AppStorage(WeatherDefaults.providerKey) private var provider = WeatherProvider.amap.rawValue
-    @AppStorage(WeatherDefaults.apiKeyKey) private var apiKey = ""
-    @AppStorage(WeatherDefaults.cityCodeKey) private var cityCode = "110000"
+    @AppStorage(WeatherDefaults.cityCodeKey) private var cityCode = "101010100"
     @AppStorage(WeatherDefaults.cityNameKey) private var cityName = "北京"
 
     var body: some View {
@@ -26,22 +24,14 @@ struct WeatherSettingsView: View {
                 .accessibilityLabel("关闭")
             }
 
-            Picker("服务商", selection: $provider) {
-                ForEach(WeatherProvider.allCases) { provider in
-                    Text(provider.displayName).tag(provider.rawValue)
-                }
+            LabeledContent("天气服务") {
+                Text("LunarBar Weather")
+                    .foregroundStyle(.secondary)
             }
-            .pickerStyle(.segmented)
 
             VStack(alignment: .leading, spacing: 10) {
-                LabeledContent("API Key") {
-                    SecureField("API Key", text: $apiKey)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 210)
-                }
-
                 LabeledContent("城市编码") {
-                    TextField("110000", text: $cityCode)
+                    TextField("101010100", text: $cityCode)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 210)
                 }

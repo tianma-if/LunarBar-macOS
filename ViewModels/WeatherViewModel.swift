@@ -49,12 +49,13 @@ final class WeatherViewModel: ObservableObject {
     }
 
     private static func loadSettings(from defaults: UserDefaults) -> WeatherSettings {
-        let providerValue = defaults.string(forKey: WeatherDefaults.providerKey) ?? WeatherProvider.amap.rawValue
+        let storedCityCode = defaults.string(forKey: WeatherDefaults.cityCodeKey) ?? "101010100"
+        let cityCode = storedCityCode == "110000" ? "101010100" : storedCityCode
 
         return WeatherSettings(
-            provider: WeatherProvider(rawValue: providerValue) ?? .amap,
-            apiKey: defaults.string(forKey: WeatherDefaults.apiKeyKey) ?? "",
-            cityCode: defaults.string(forKey: WeatherDefaults.cityCodeKey) ?? "110000",
+            provider: .lunarBar,
+            apiKey: "",
+            cityCode: cityCode,
             cityName: defaults.string(forKey: WeatherDefaults.cityNameKey) ?? "北京"
         )
     }
