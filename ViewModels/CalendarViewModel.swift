@@ -1,14 +1,26 @@
 import Foundation
 import Combine
+import AppKit
 
 @MainActor
 final class CalendarViewModel: ObservableObject {
     @Published private(set) var days: [DayInfo] = []
     @Published private(set) var monthTitle = ""
+    @Published private(set) var today: Date
+    @Published var selectedDate: Date {
+        didSet {
+            rebuildMonth()
+        }
+    }
     @Published var selectedMonth: Date {
         didSet {
             rebuildMonth()
         }
+    }
+
+    var isTodaySelected: Bool {
+        calendar.isDate(selectedMonth, equalTo: today, toGranularity: .month) &&
+        calendar.isDate(selectedDate, inSameDayAs: today)
     }
 
     let weekdaySymbols = ["一", "二", "三", "四", "五", "六", "日"]
@@ -16,14 +28,18 @@ final class CalendarViewModel: ObservableObject {
     private var calendar: Calendar
     private var holidays: [Date: HolidayInfo] = [:]
     private let holidayService: HolidayService
-    private let lunarFormatter: LunarCalendarFormatter
-    private let titleFormatter: DateFormatter
+    private var lunarFormatter: LunarCalendarFormatter
+    private var titleFormatter: DateFormatter
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         selectedMonth: Date = Date(),
         calendar: Calendar = CalendarViewModel.makeGregorianCalendar(),
         holidayService: HolidayService = HolidayService()
     ) {
+        let normalizedToday = calendar.startOfDay(for: Date())
+        self.today = normalizedToday
+        self.selectedDate = normalizedToday
         self.selectedMonth = selectedMonth
         self.calendar = calendar
         self.holidayService = holidayService
@@ -37,6 +53,12 @@ final class CalendarViewModel: ObservableObject {
 
         rebuildMonth()
         loadHolidays()
+        setupObservers()
+        setupTimer()
+    }
+
+    func onAppear() {
+        refreshToday(resetSelection: true)
     }
 
     func goToPreviousMonth() {
@@ -48,7 +70,159 @@ final class CalendarViewModel: ObservableObject {
     }
 
     func goToToday() {
-        selectedMonth = Date()
+        let now = calendar.startOfDay(for: Date())
+        today = now
+        selectedDate = now
+        selectedMonth = now
+        rebuildMonth()
+    }
+
+    func selectDate(_ date: Date) {
+        let normalized = calendar.startOfDay(for: date)
+        selectedDate = normalized
+
+        if !calendar.isDate(normalized, equalTo: selectedMonth, toGranularity: .month) {
+            selectedMonth = normalized
+        } else {
+            rebuildMonth()
+        }
+    }
+
+    func tooltipText(for day: DayInfo) -> String {
+        let gregorianFormatter = DateFormatter()
+        gregorianFormatter.calendar = calendar
+        gregorianFormatter.locale = Locale(identifier: "zh_CN")
+        gregorianFormatter.dateFormat = "yyyy年M月d日 EEEE"
+        var text = gregorianFormatter.string(from: day.date)
+
+        if day.isToday {
+            text += " (今天)"
+        }
+
+        let fullLunar = lunarFormatter.fullLunarText(for: day.date)
+        if !fullLunar.isEmpty {
+            text += " · \(fullLunar)"
+        }
+
+        if let festival = day.festivalName {
+            text += " · \(festival)"
+        }
+
+        if let solarTerm = day.solarTerm {
+            text += " · \(solarTerm)"
+        }
+
+        if let badge = day.holidayBadge {
+            switch badge {
+            case .rest:
+                text += " [休]"
+            case .work:
+                text += " [班]"
+            }
+        }
+
+        return text
+    }
+
+    private func setupObservers() {
+        NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleDayChanged()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .NSSystemClockDidChange)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleSystemClockChanged()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleTimeZoneChanged()
+            }
+            .store(in: &cancellables)
+
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleSystemClockChanged()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.refreshToday(resetSelection: false)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func setupTimer() {
+        Timer.publish(every: 60, tolerance: 10, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.refreshToday(resetSelection: false)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func refreshToday(resetSelection: Bool) {
+        updateCalendar()
+        let now = calendar.startOfDay(for: Date())
+        let dayChanged = (now != today)
+        today = now
+
+        if resetSelection || dayChanged {
+            selectedDate = now
+            selectedMonth = now
+        }
+
+        rebuildMonth()
+    }
+
+    func handleDayChanged() {
+        let now = calendar.startOfDay(for: Date())
+        guard now != today else { return }
+
+        let wasSelectingToday = calendar.isDate(selectedDate, inSameDayAs: today)
+        today = now
+
+        if wasSelectingToday {
+            selectedDate = now
+            selectedMonth = now
+        }
+
+        rebuildMonth()
+    }
+
+    private func handleSystemClockChanged() {
+        updateCalendar()
+        let now = calendar.startOfDay(for: Date())
+        let wasSelectingToday = calendar.isDate(selectedDate, inSameDayAs: today)
+        today = now
+
+        if wasSelectingToday {
+            selectedDate = now
+            selectedMonth = now
+        }
+
+        rebuildMonth()
+    }
+
+    private func handleTimeZoneChanged() {
+        updateCalendar()
+        today = calendar.startOfDay(for: Date())
+        rebuildMonth()
+    }
+
+    private func updateCalendar() {
+        calendar = CalendarViewModel.makeGregorianCalendar()
+        titleFormatter.calendar = calendar
+        lunarFormatter = LunarCalendarFormatter(timeZone: calendar.timeZone)
     }
 
     private func shiftMonth(by offset: Int) {
@@ -91,7 +265,8 @@ final class CalendarViewModel: ObservableObject {
                 date: date,
                 dayNumber: dayNumber,
                 monthPosition: monthPosition,
-                isToday: calendar.isDateInToday(date),
+                isToday: calendar.isDate(date, inSameDayAs: today),
+                isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
                 lunarText: lunarFormatter.lunarText(for: date),
                 festivalName: officialFestivalName ?? lunarFormatter.festivalName(for: date),
                 solarTerm: lunarFormatter.solarTerm(for: date),
@@ -192,6 +367,18 @@ private struct LunarCalendarFormatter {
         }
 
         return dayText(day)
+    }
+
+    func fullLunarText(for date: Date) -> String {
+        let components = chineseCalendar.dateComponents([.month, .day, .isLeapMonth], from: date)
+
+        guard let month = components.month, let day = components.day else {
+            return ""
+        }
+
+        let m = monthText(month: month, isLeapMonth: components.isLeapMonth == true)
+        let d = dayText(day)
+        return "农历\(m)\(d)"
     }
 
     func festivalName(for date: Date) -> String? {

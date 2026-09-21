@@ -3,12 +3,12 @@ import AppKit
 
 struct WeatherSettingsView: View {
     @ObservedObject var viewModel: WeatherViewModel
+    @EnvironmentObject private var updateManager: AutoUpdateManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     @AppStorage(WeatherDefaults.cityCodeKey) private var cityCode = "101010100"
     @AppStorage(WeatherDefaults.cityNameKey) private var cityName = "北京"
-    @State private var updateState: UpdateState = .idle
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -66,22 +66,44 @@ struct WeatherSettingsView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("应用更新")
                     .font(.headline)
+
+                Toggle("自动检查并下载新版本", isOn: $updateManager.automaticallyCheckForUpdates)
+                    .font(.subheadline)
 
                 LabeledContent("当前版本") {
                     Text(UpdateChecker.currentVersion)
                         .foregroundStyle(.secondary)
                 }
 
-                HStack {
+                HStack(spacing: 8) {
                     Button("检查更新") {
-                        checkForUpdates()
+                        updateManager.checkForUpdates(manual: true)
                     }
-                    .disabled(updateState == .checking)
+                    .disabled(updateManager.status == .checking || updateManager.status == .installing)
 
                     updateStatusView
+                }
+
+                if let version = updateManager.readyVersion {
+                    HStack {
+                        Text("新版本 v\(version) 已就绪")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        Button("立即重启更新") {
+                            updateManager.applyUpdateAndRestart()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                    .padding(8)
+                    .background(Color.accentColor.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
             }
 
@@ -111,52 +133,46 @@ struct WeatherSettingsView: View {
 
     @ViewBuilder
     private var updateStatusView: some View {
-        switch updateState {
+        switch updateManager.status {
         case .idle:
             EmptyView()
         case .checking:
-            ProgressView()
-                .controlSize(.small)
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("正在检查…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         case .latest:
             Text("已是最新版本")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        case .available(let result):
-            Button("下载 v\(result.latestVersion)") {
-                openURL(result.releaseURL)
+        case .downloading(let progress, let version):
+            HStack(spacing: 6) {
+                ProgressView(value: progress > 0 ? progress : nil)
+                    .controlSize(.small)
+                    .frame(width: 40)
+                Text("正在下载 v\(version)…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .buttonStyle(.link)
+        case .readyToRestart:
+            EmptyView()
+        case .installing:
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("正在重启更新…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         case .failed(let message):
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.red)
         }
     }
-
-    private func checkForUpdates() {
-        updateState = .checking
-
-        Task {
-            do {
-                let result = try await UpdateChecker().checkForUpdates()
-                if UpdateChecker.isNewer(result.latestVersion, than: UpdateChecker.currentVersion) {
-                    updateState = .available(result)
-                } else {
-                    updateState = .latest
-                }
-            } catch {
-                updateState = .failed((error as? LocalizedError)?.errorDescription ?? "检查更新失败")
-            }
-        }
-    }
-}
-
-private enum UpdateState: Equatable {
-    case idle
-    case checking
-    case latest
-    case available(UpdateCheckResult)
-    case failed(String)
 }
 
 struct WeatherSettingsView_Previews: PreviewProvider {

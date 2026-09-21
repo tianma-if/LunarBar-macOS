@@ -4,10 +4,12 @@ import SwiftUI
 struct LunarBarApp: App {
     @StateObject private var calendarViewModel = CalendarViewModel()
     @StateObject private var weatherViewModel = WeatherViewModel()
+    @StateObject private var updateManager = AutoUpdateManager.shared
 
     var body: some Scene {
         MenuBarExtra {
             MainPopupView(viewModel: calendarViewModel, weatherViewModel: weatherViewModel)
+                .environmentObject(updateManager)
                 .frame(width: 360, height: 520)
                 .background(.thinMaterial)
         } label: {
@@ -18,6 +20,7 @@ struct LunarBarApp: App {
 
         Window("LunarBar 设置", id: "settings") {
             WeatherSettingsView(viewModel: weatherViewModel)
+                .environmentObject(updateManager)
         }
         .defaultSize(width: 360, height: 760)
         .windowResizability(.contentSize)

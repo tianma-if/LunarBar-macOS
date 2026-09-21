@@ -17,6 +17,7 @@ struct DayInfo: Identifiable, Equatable {
     let dayNumber: Int
     let monthPosition: MonthPosition
     let isToday: Bool
+    let isSelected: Bool
     let lunarText: String?
     let festivalName: String?
     let solarTerm: String?
