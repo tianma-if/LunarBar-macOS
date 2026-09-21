@@ -265,3 +265,69 @@ private enum WeatherSymbolMapper {
         return "sun.max.fill"
     }
 }
+
+enum IPLocationService {
+    private struct IPIPResponse: Decodable {
+        let ret: String
+        let data: IPIPData
+    }
+
+    private struct IPIPData: Decodable {
+        let location: [String]
+    }
+
+    private struct IPAPIResponse: Decodable {
+        let city: String?
+    }
+
+    static func fetchCityName() async -> String? {
+        if let city = await fetchFromIPIP() {
+            return city
+        }
+        if let city = await fetchFromIPAPI() {
+            return city
+        }
+        return nil
+    }
+
+    private static func fetchFromIPIP() async -> String? {
+        guard let url = URL(string: "https://myip.ipip.net/json") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 4
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+                return nil
+            }
+            let result = try JSONDecoder().decode(IPIPResponse.self, from: data)
+            let locs = result.data.location
+            if locs.count >= 3 && !locs[2].isEmpty {
+                return locs[2]
+            } else if locs.count >= 2 && !locs[1].isEmpty {
+                return locs[1]
+            }
+            return nil
+        } catch {
+            return nil
+        }
+    }
+
+    private static func fetchFromIPAPI() async -> String? {
+        guard let url = URL(string: "http://ip-api.com/json/?lang=zh-CN") else { return nil }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 4
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+                return nil
+            }
+            let result = try JSONDecoder().decode(IPAPIResponse.self, from: data)
+            if let city = result.city, !city.isEmpty {
+                return city
+            }
+            return nil
+        } catch {
+            return nil
+        }
+    }
+}

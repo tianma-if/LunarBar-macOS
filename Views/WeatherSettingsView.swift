@@ -7,8 +7,8 @@ struct WeatherSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
-    @AppStorage(WeatherDefaults.cityCodeKey) private var cityCode = "101010100"
-    @AppStorage(WeatherDefaults.cityNameKey) private var cityName = "北京"
+    @AppStorage(WeatherDefaults.useAutoLocationKey) private var useAutoLocation = true
+    @AppStorage(WeatherDefaults.cityNameKey) private var cityName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -39,28 +39,37 @@ struct WeatherSettingsView: View {
                 Text("位置")
                     .font(.subheadline.weight(.medium))
 
-                Text(viewModel.locationMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Toggle("自动获取当前位置", isOn: $useAutoLocation)
+                    .font(.subheadline)
+                    .onChange(of: useAutoLocation) { _, isEnabled in
+                        if isEnabled {
+                            viewModel.requestCurrentLocation()
+                        }
+                    }
 
-                Button(viewModel.locationMessage.contains("关闭") ? "打开定位设置" : "重新获取当前位置") {
-                    viewModel.requestCurrentLocation()
+                if useAutoLocation {
+                    Text(viewModel.locationMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Button(viewModel.locationMessage.contains("关闭") || viewModel.locationMessage.contains("拒绝") ? "打开定位设置" : "重新获取当前位置") {
+                        if viewModel.locationMessage.contains("关闭") || viewModel.locationMessage.contains("拒绝") {
+                            viewModel.openLocationSettings()
+                        } else {
+                            viewModel.requestCurrentLocation()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("无法获取位置时使用以下城市")
+                Text(useAutoLocation ? "无法获取位置时使用备用城市" : "城市设置")
                     .font(.subheadline.weight(.medium))
 
-                LabeledContent("城市编码") {
-                    TextField("101010100", text: $cityCode)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 210)
-                }
-
                 LabeledContent("城市名称") {
-                    TextField("北京", text: $cityName)
+                    TextField("例如：郑州 / 北京", text: $cityName)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 210)
                 }
@@ -121,7 +130,18 @@ struct WeatherSettingsView: View {
                 Spacer()
 
                 Button("保存") {
-                    viewModel.reloadSettings()
+                    let trimmed = cityName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !useAutoLocation && !trimmed.isEmpty {
+                        Task {
+                            await viewModel.updateManualCity(trimmed)
+                        }
+                    } else if !trimmed.isEmpty && trimmed != viewModel.settings.cityName {
+                        Task {
+                            await viewModel.updateManualCity(trimmed)
+                        }
+                    } else {
+                        viewModel.reloadSettings()
+                    }
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
